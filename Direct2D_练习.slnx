@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Direct2D_练习-窗口/Direct2D_练习-窗口.vcxproj" Id="9c563234-2fc3-48ad-941b-7dbb2fa6fafe" />
+</Solution>
