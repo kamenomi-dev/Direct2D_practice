@@ -21,15 +21,18 @@ int APIENTRY wWinMain(
         void CreateDeviceResources(
             Direct2D_UI::Graphics& graphics
         ) final {
-            Direct2D_UI::SolidColorBrush{graphics, D2D1::ColorF::Green}.Move(brush);
+            __super::CreateDeviceResources(graphics);
+            graphics.CreateSolidColorBrush(D2D1::ColorF(.5,.5,.5,.5), brush);
         }
 
-        void DiscardDeviceResources() final { brush.Discard(); }
+        void DiscardDeviceResources() final {
+            brush.Discard();
+            __super::DiscardDeviceResources();
+        }
 
         bool OnRender(
             Direct2D_UI::Graphics& graphics
         ) final {
-            graphics.GetPointer()->Clear();
             D2D1_ROUNDED_RECT rect{0};
             rect.rect.left   = GetMousePosition().x - 20.f;
             rect.rect.top    = GetMousePosition().y - 20.f;

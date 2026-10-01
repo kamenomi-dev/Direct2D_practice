@@ -20,6 +20,8 @@ class D2DInterface {
         }
     }
 
+    bool IsValid() { return _pointer != nullptr && _lastResult == S_OK; }
+
     auto*   GetPointer() { return _pointer; }
     auto*&  GetPointerRef() { return _pointer; }
     HRESULT GetLastResult() const { return _lastResult; }
@@ -59,44 +61,6 @@ class D2DInterface {
     HRESULT _lastResult = S_OK;
 };
 
-class Graphics : public D2DInterface<ID2D1HwndRenderTarget> {
-  public:
-    Graphics() = default;
-
-    void BeginDraw() { GetPointer()->BeginDraw(); }
-    void EndDraw() { GetPointer()->EndDraw(); }
-
-    void SetGraphicsSize(
-        const D2D_SIZE_U& size
-    ) {
-        GetPointer()->Resize(size);
-    }
-
-  private:
-    friend class Factory;
-    Graphics(
-        ID2D1Factory* factory, HWND window
-    ) {
-        RECT rect;
-        GetWindowRect(window, &rect);
-
-        SetLastResult(factory->CreateHwndRenderTarget(
-            D2D1::RenderTargetProperties(), D2D1::HwndRenderTargetProperties(window, D2D1::SizeU(rect.right - rect.left, rect.bottom - rect.top)), &GetPointerRef()
-        ));
-    };
-};
-
-class Factory : public D2DInterface<ID2D1Factory> {
-  public:
-    Factory() { SetLastResult(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &GetPointerRef())); }
-
-    void AttachWindow(
-        HWND window, _Out_ Graphics& graphics
-    ) {
-        Graphics{GetPointer(), window}.Move(graphics);
-    }
-};
-
 template <class T>
     requires std::is_base_of_v<ID2D1Resource, T>
 class D2DResource : public D2DInterface<T> {
@@ -126,10 +90,13 @@ class D2DResource : public D2DInterface<T> {
 class SolidColorBrush : public D2DResource<ID2D1SolidColorBrush> {
   public:
     SolidColorBrush() = default;
+
+  private:
+    friend class Graphics;
     SolidColorBrush(
-        Graphics& graphics
+        ID2D1HwndRenderTarget* graphics
     )
-    : D2DResource(graphics.GetPointer()) {
+    : D2DResource(graphics) {
         if (!SUCCEEDED(GetLastResult())) {
             return;
         }
@@ -137,9 +104,9 @@ class SolidColorBrush : public D2DResource<ID2D1SolidColorBrush> {
         SetLastResult(GetRenderTarget()->CreateSolidColorBrush(D2D1::ColorF(0, 0.f), &GetPointerRef()));
     };
     SolidColorBrush(
-        Graphics& graphics, const D2D1::ColorF& color
+        ID2D1HwndRenderTarget* graphics, const D2D1::ColorF& color
     )
-    : D2DResource(graphics.GetPointer()) {
+    : D2DResource(graphics) {
         if (!SUCCEEDED(GetLastResult())) {
             return;
         }
@@ -147,7 +114,78 @@ class SolidColorBrush : public D2DResource<ID2D1SolidColorBrush> {
         SetLastResult(GetRenderTarget()->CreateSolidColorBrush(color, &GetPointerRef()));
     };
 
-    ~SolidColorBrush() { int a = 1; }
+  public:
+    void SetColor(
+        const D2D1::ColorF& color
+    ) {
+        if (IsValid()) GetPointer()->SetColor(color);
+    }
+};
+
+class Graphics : public D2DInterface<ID2D1HwndRenderTarget> {
+  public:
+    Graphics() = default;
+
+    void    BeginDraw() { GetPointer()->BeginDraw(); }
+    HRESULT EndDraw() { return GetPointer()->EndDraw(); }
+
+    HRESULT CreateSolidColorBrush(
+        SolidColorBrush& out
+    ) {
+        Direct2D_UI::SolidColorBrush{GetPointer()}.Move(out);
+        return GetLastResult();
+    };
+
+    HRESULT CreateSolidColorBrush(
+        const D2D1::ColorF& color, SolidColorBrush& out
+    ) {
+        Direct2D_UI::SolidColorBrush{GetPointer(), color}.Move(out);
+        return GetLastResult();
+    };
+
+  public:
+    void SetGraphicsSize(
+        const D2D_SIZE_U& size
+    ) {
+        GetPointer()->Resize(size);
+    }
+
+    template <class T>
+        requires std::is_base_of_v<T, SolidColorBrush>
+    bool FillRectangle(
+        D2D1_RECT_F rect, T& brush
+    ) {
+        if (!IsValid() || !brush.IsValid()) {
+            return false;
+        }
+
+        GetPointer()->FillRectangle(rect, brush.GetPointer());
+        return true;
+    }
+
+  private:
+    friend class Factory;
+    Graphics(
+        ID2D1Factory* factory, HWND window
+    ) {
+        RECT rect;
+        GetWindowRect(window, &rect);
+
+        SetLastResult(factory->CreateHwndRenderTarget(
+            D2D1::RenderTargetProperties(), D2D1::HwndRenderTargetProperties(window, D2D1::SizeU(rect.right - rect.left, rect.bottom - rect.top)), &GetPointerRef()
+        ));
+    };
+};
+
+class Factory : public D2DInterface<ID2D1Factory> {
+  public:
+    Factory() { SetLastResult(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &GetPointerRef())); }
+
+    void AttachWindow(
+        HWND window, _Out_ Graphics& graphics
+    ) {
+        Graphics{GetPointer(), window}.Move(graphics);
+    }
 };
 
 inline auto& GetDirect2DFactory() {
