@@ -41,3 +41,4 @@
 *.dwo
 /.vs
 /Direct2D_练习-窗口/x64/Debug
+/Direct2D_练习-窗口/x64/Release
