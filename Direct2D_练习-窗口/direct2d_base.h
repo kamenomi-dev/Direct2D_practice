@@ -26,7 +26,7 @@ class D2DInterface {
     auto*&  GetPointerRef() { return _pointer; }
     HRESULT GetLastResult() const { return _lastResult; }
 
-    void Move(
+    virtual void Move(
         D2DInterface<T>& destination
     ) {
         destination.SetPointer(GetPointer());
@@ -78,6 +78,15 @@ class D2DResource : public D2DInterface<T> {
 
         _renderTarget = target;
         SetLastResult(S_OK);
+    }
+
+    void Move(
+        D2DResource& destination
+    ) {
+        __super::Move(destination);
+        destination._renderTarget = _renderTarget;
+
+        _renderTarget = nullptr;
     }
 
   protected:
