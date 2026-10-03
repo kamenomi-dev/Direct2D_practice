@@ -23,6 +23,7 @@ struct MouseStatus {
     bool          isMove        = false;
     bool          isNonClient   = false;
     char          hittestResult = HTNOWHERE;
+    D2D1_POINT_2L dragDelta;
 };
 
 struct WindowProperties {
@@ -196,43 +197,34 @@ class Window {
         }
     }
 
-    bool CALLBACK HitTestMessageProcesdure(
-        UINT message, WPARAM, LPARAM lParam, _Out_ LRESULT& result
+    bool NativeCaptionHitTest(
+        const POINT& position, LRESULT& result
     ) {
-        result = S_OK;
+        const auto borderSize = GetSystemMetrics(SM_CYSIZEFRAME);
 
-        static auto borderSize = GetSystemMetrics(SM_CYSIZEFRAME);
-
-        if (message != WM_NCHITTEST) {
+        if (position.x <= borderSize || position.x >= (int)_windowSize.width - borderSize) {
             return false;
         }
 
-        POINT mousePosition{LOWORD(lParam), HIWORD(lParam)};
-        ScreenToClient(_window, &mousePosition);
-
-        if (mousePosition.x <= borderSize || mousePosition.x >= (int)_windowSize.width - borderSize) {
-            return false;
-        }
-
-        if (mousePosition.y <= borderSize) {
+        if (position.y <= borderSize) {
             result = HTTOP;
             return true;
         }
 
-        if (const auto captionHight = GetSystemMetrics(SM_CYCAPTION); mousePosition.y <= borderSize + captionHight) {
+        if (const auto captionHight = GetSystemMetrics(SM_CYCAPTION); position.y <= borderSize + captionHight) {
             const auto buttonWidth = GetSystemMetrics(SM_CXSIZE);
             const auto relatedLeft = (int)_windowSize.width - 3 * buttonWidth;
-            if (relatedLeft + 2 * buttonWidth <= mousePosition.x) {
+            if (relatedLeft + 2 * buttonWidth <= position.x) {
                 result = HTCLOSE;
                 return true;
             }
 
-            if (relatedLeft + 1 * buttonWidth <= mousePosition.x) {
+            if (relatedLeft + 1 * buttonWidth <= position.x) {
                 result = HTMAXBUTTON;
                 return true;
             }
 
-            if (relatedLeft + 0 * buttonWidth <= mousePosition.x) {
+            if (relatedLeft + 0 * buttonWidth <= position.x) {
                 result = HTMINBUTTON;
                 return true;
             }
@@ -244,17 +236,33 @@ class Window {
         return false;
     }
 
+    bool CALLBACK HitTestMessageProcesdure(
+        UINT message, WPARAM, LPARAM lParam, _Out_ LRESULT& result
+    ) {
+        result = NULL;
+
+        if (message != WM_NCHITTEST) {
+            return false;
+        }
+
+        POINT mousePosition{LOWORD(lParam), HIWORD(lParam)};
+        ScreenToClient(_window, &mousePosition);
+
+        return NativeCaptionHitTest(mousePosition, result);
+    }
+
     bool CALLBACK MouseMessageProcedure(
         UINT message, WPARAM wParam, LPARAM lParam, _Out_ LRESULT& result
     ) {
         result = NULL;
 
         static bool     isTracked = false;
-        TRACKMOUSEEVENT trackEvent{.cbSize = sizeof TRACKMOUSEEVENT, .dwFlags = TME_LEAVE, .hwndTrack = _window};
+        TRACKMOUSEEVENT trackEvent{.cbSize = sizeof TRACKMOUSEEVENT, .dwFlags = TME_LEAVE | TME_NONCLIENT, .hwndTrack = _window};
 
-        const bool isMouseLeaveMessage = message == WM_MOUSELEAVE || message == WM_NCMOUSELEAVE;
+        const bool isMouseLeaveMessage = message == WM_NCMOUSELEAVE;
         if (isMouseLeaveMessage) {
             isTracked = false;
+            _mouse    = MouseStatus{.position = _mouse.position};
             InvalidateRect(_window, nullptr, FALSE);
             return true;
         };
@@ -267,25 +275,30 @@ class Window {
             return false;
         }
 
-        _mouse = MouseStatus{
-            .position = {.x = LOWORD(lParam), .y = HIWORD(lParam)},
-              .hittestResult = HTCLIENT
-        };
+        if (_mouse.isDown) {
+            _mouse.dragDelta = {.x = LOWORD(lParam) - _mouse.position.x, .y = HIWORD(lParam) - _mouse.position.y};
+        } else {
+            _mouse.position = {.x = LOWORD(lParam), .y = HIWORD(lParam)};
 
-        if (isNCMouseMessage) {
-            _mouse.isNonClient   = true;
-            _mouse.hittestResult = (char)wParam;
-            ScreenToClient(_window, &_mouse.position);
+            if (isNCMouseMessage) {
+                ScreenToClient(_window, &_mouse.position);
+            }
         }
 
-        if (isClientMouseMessage) {
-            _mouse.hittestResult = HTCLIENT;
+        _mouse.hittestResult = HTCLIENT;
+        LRESULT actualHitTest{};
+        if (NativeCaptionHitTest(_mouse.position, actualHitTest)) {
+            _mouse.hittestResult = (char)actualHitTest;
+        }
+
+        if (isNCMouseMessage) {
+            _mouse.isNonClient = true;
         }
 
         if (isMouseMoveMessage) {
             _mouse.isMove = true;
 
-            if (!isTracked) {
+            if (!isTracked && isNCMouseMessage) {
                 isTracked = true;
                 TrackMouseEvent(&trackEvent);
             }
@@ -301,6 +314,10 @@ class Window {
         _mouse.isDown        = (action == 0);
         _mouse.isUp          = (action == 1);
         _mouse.isDoubleClick = (action == 2);
+
+        if (_mouse.isUp) {
+            _mouse.dragDelta = {0, 0};
+        }
 
         // Preserve that system process HTCAPTION hit test.
         if (isNCMouseMessage && wParam == HTCAPTION) {
