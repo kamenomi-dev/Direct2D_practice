@@ -6,6 +6,7 @@
 #include <windows.h>
 
 #include "direct2d_base.h"
+#include "direct2d_dwrite.h"
 
 namespace Direct2D_UI {
 struct MouseStatus {
@@ -27,6 +28,7 @@ struct MouseStatus {
 };
 
 struct WindowProperties {
+    D2D1::ColorF TextColor       = {0xFFFFFF, 1.f};
     D2D1::ColorF CaptionColor    = {0x252527, 1.f};
     D2D1::ColorF BackgroundColor = {0x28282B, 1.f};
 };
@@ -53,9 +55,9 @@ class Window {
     }
 
     void Initialize(
-        HINSTANCE instance, std::wstring title = L"", D2D1_POINT_2L position = {0, 0}, D2D1_SIZE_U size = {800, 600}
+        HINSTANCE instance, std::wstring title = L"Untitled Window 1", D2D1_POINT_2L position = {0, 0}, D2D1_SIZE_U size = {800, 600}
     ) {
-        if (title.empty()) _windowTitle = title;
+        _windowTitle    = title;
         _windowPosition = position;
         _windowSize     = size;
 
@@ -141,8 +143,12 @@ class Window {
     };
     virtual void DiscardDeviceResources() { _nativeBrush.Discard(); };
 
-    virtual void CreateDeviceIndependentResources() {};
-    virtual void DiscardDeviceIndependentResources() {};
+    virtual void CreateDeviceIndependentResources() {
+        const auto captionHeight = GetSystemMetrics(SM_CYCAPTION);
+        GetDWriteFactory().CreateTextFormat(L"Segoe UI", DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, captionHeight * 0.75f, _nativeTextFormat);
+        _nativeTextFormat.SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
+    };
+    virtual void DiscardDeviceIndependentResources() { _nativeTextFormat.Discard(); };
 
     virtual bool OnRender(
         Graphics& graphics
@@ -167,6 +173,10 @@ class Window {
             rect.bottom = height;
             _nativeBrush.SetColor(_properties.CaptionColor);
             graphics.FillRectangle(rect, _nativeBrush);
+
+            _nativeBrush.SetColor(_properties.TextColor);
+            _nativeTextFormat.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+            graphics.GetPointer()->DrawTextW(_windowTitle.c_str(), _windowTitle.length(), _nativeTextFormat.GetPointer(), rect, _nativeBrush.GetPointer());
 
             const auto buttonWidth = GetSystemMetrics(SM_CXSIZE);
 
@@ -193,7 +203,7 @@ class Window {
                 }
 
                 graphics.FillRectangle(rect, _nativeBrush);
-            };
+            }
         }
     }
 
@@ -492,15 +502,16 @@ class Window {
   private:
     HWND _window = nullptr;
 
-    std::wstring          _windowTitle    = L"窗口 1";
+    std::wstring          _windowTitle;
     D2D1_POINT_2L         _windowPosition = {0, 0};
     D2D1_SIZE_U           _windowSize     = {0, 0};
-    Direct2D_UI::Graphics _graphics       = {};
+    Direct2D_UI::Graphics _graphics;
 
   private:
     MouseStatus                  _mouse;
     WindowProperties             _properties;
     Direct2D_UI::SolidColorBrush _nativeBrush;
+    Direct2D_UI::TextFormat      _nativeTextFormat;
 };
 
 inline auto DoMessageLoop() {

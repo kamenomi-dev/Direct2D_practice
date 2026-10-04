@@ -146,6 +146,7 @@
     <ClInclude Include="direct2d_base.h" />
     <ClInclude Include="Direct2D_练习-窗口.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="direct2d_dwrite.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="direct2d_window.h" />

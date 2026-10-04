@@ -1,6 +1,6 @@
 #pragma once
 #include <type_traits>
-#include <windows.h>
+#include <Windows.h>
 #include <d2d1.h>
 #include <dwmapi.h>
 #pragma comment(lib, "d2d1.lib")

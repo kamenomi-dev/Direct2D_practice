@@ -24,6 +24,9 @@
     <ClInclude Include="direct2d_base.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="direct2d_dwrite.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Direct2D_练习-窗口.cpp">
