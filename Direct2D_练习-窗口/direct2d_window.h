@@ -7,6 +7,7 @@
 
 #include "direct2d_base.h"
 #include "direct2d_dwrite.h"
+#include "direct2d_resource_manager.h"
 
 namespace Direct2D_UI {
 struct MouseStatus {
@@ -157,28 +158,40 @@ class Window {
     }
 
   private:
-    void NativeRender(
+    void NativeRenderWindowFrame(
         Graphics& graphics
     ) {
-        graphics.GetPointer()->Clear();
-
         D2D1_RECT_F rect = {0, 0, GetSize().width * 1.f, GetSize().height * 1.f};
         _nativeBrush.SetColor(_properties.BackgroundColor);
         graphics.FillRectangle(rect, _nativeBrush);
 
+        const auto height = (float)GetSystemMetrics(SM_CYCAPTION) + (float)GetSystemMetrics(SM_CYSIZEFRAME) + (float)GetSystemMetrics(SM_CXPADDEDBORDER);
+        rect.bottom       = height;
+        _nativeBrush.SetColor(_properties.CaptionColor);
+        graphics.FillRectangle(rect, _nativeBrush);
+
+        _nativeBrush.SetColor(_properties.TextColor);
+        _nativeTextFormat.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+        graphics.GetPointer()->DrawTextW(_windowTitle.c_str(), (uint32_t)_windowTitle.length(), _nativeTextFormat.GetPointer(), rect, _nativeBrush.GetPointer());
+
+        const auto buttonWidth  = GetSystemMetrics(SM_CXSIZE);
+        rect.right             -= (buttonWidth * 3);
+
+        Resource::ResourceManager::GetResourceManager();
+        graphics.GetPointer()->DrawTextLayout({.x = rect.right, .y = 0.f}, Resource::ResourceManager::SystemControlPanelLayout.GetPointer(), _nativeBrush.GetPointer());
+    }
+
+    void NativeRender(
+        Graphics& graphics
+    ) {
+        graphics.GetPointer()->Clear();
+        NativeRenderWindowFrame(graphics);
+
         // Caption
         {
-            const auto height = (float)GetSystemMetrics(SM_CYCAPTION) + (float)GetSystemMetrics(SM_CYSIZEFRAME) + (float)GetSystemMetrics(SM_CXPADDEDBORDER);
-
-            rect.bottom = height;
-            _nativeBrush.SetColor(_properties.CaptionColor);
-            graphics.FillRectangle(rect, _nativeBrush);
-
-            _nativeBrush.SetColor(_properties.TextColor);
-            _nativeTextFormat.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-            graphics.GetPointer()->DrawTextW(_windowTitle.c_str(), _windowTitle.length(), _nativeTextFormat.GetPointer(), rect, _nativeBrush.GetPointer());
-
-            const auto buttonWidth = GetSystemMetrics(SM_CXSIZE);
+            const auto  height      = (float)GetSystemMetrics(SM_CYCAPTION) + (float)GetSystemMetrics(SM_CYSIZEFRAME) + (float)GetSystemMetrics(SM_CXPADDEDBORDER);
+            D2D1_RECT_F rect        = {0, 0, GetSize().width * 1.f, height};
+            const auto  buttonWidth = GetSystemMetrics(SM_CXSIZE);
 
             if (_mouse.hittestResult == HTCLOSE || _mouse.hittestResult == HTZOOM || _mouse.hittestResult == HTREDUCE) {
                 if (_mouse.hittestResult == HTCLOSE) {
@@ -196,10 +209,10 @@ class Window {
                     rect.right = (float)GetSize().width - (float)buttonWidth * 2;
                 }
 
-                _nativeBrush.SetColor(D2D1::ColorF::Red);
+                _nativeBrush.SetColor(D2D1::ColorF{D2D1::ColorF::GhostWhite, 0.5});
 
                 if (_mouse.isDown) {
-                    _nativeBrush.SetColor(D2D1::ColorF::DarkRed);
+                    _nativeBrush.SetColor(D2D1::ColorF{D2D1::ColorF::GhostWhite, 0.25});
                 }
 
                 graphics.FillRectangle(rect, _nativeBrush);

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <dwrite.h>
+#include <dwrite_1.h>
 #pragma comment(lib, "Dwrite.lib")
 
 namespace Direct2D_UI {
@@ -37,14 +38,44 @@ class TextFormat : public D2DInterface<IDWriteTextFormat> {
     }
 };
 
-class DWriteFactory : public D2DInterface<IDWriteFactory> {
+class TextLayout : public D2DInterface<IDWriteTextLayout> {
   public:
-    DWriteFactory() { SetLastResult(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), (IUnknown**)&GetPointerRef())); }
+    TextLayout() = default;
+
+    bool SetCharacterSpacing(
+        float leadingSpacing, float trailingSpacing, float minimumAdvanceWidth, const DWRITE_TEXT_RANGE& range
+    ) {
+        IDWriteTextLayout1* layout1 = nullptr;
+        if (const auto hResult = GetPointer()->QueryInterface(IID_PPV_ARGS(&layout1)); FAILED(hResult)) {
+            return false;
+        }
+
+        return SUCCEEDED(layout1->SetCharacterSpacing(leadingSpacing, trailingSpacing, minimumAdvanceWidth, range));
+    }
+
+  private:
+    friend class DWriteFactory;
+    TextLayout(
+        IDWriteFactory1* factory, const std::wstring& string, IDWriteTextFormat* textFormat, D2D1_SIZE_F maximum
+    ) {
+        SetLastResult(factory->CreateTextLayout(string.c_str(), (uint32_t)string.size(), textFormat, maximum.width, maximum.height, &GetPointerRef()));
+    }
+};
+
+class DWriteFactory : public D2DInterface<IDWriteFactory1> {
+  public:
+    DWriteFactory() { SetLastResult(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory1), (IUnknown**)&GetPointerRef())); }
 
     void CreateTextFormat(
         const std::wstring& fontFamily, DWRITE_FONT_WEIGHT weight, DWRITE_FONT_STYLE style, DWRITE_FONT_STRETCH stretch, float size, _Out_ TextFormat& textFormat
     ) {
         TextFormat{GetPointer(), fontFamily, weight, style, stretch, size}.Move(textFormat);
+    }
+
+    void CreateTextLayout(
+        const std::wstring& string, _In_ TextFormat& textFormat, D2D1_SIZE_F maximum, _Out_ TextLayout& textLayout
+    ) {
+        TextLayout{GetPointer(), string, textFormat.GetPointer(), maximum}.Move(textLayout);
     }
 };
 

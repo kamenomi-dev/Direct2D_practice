@@ -152,7 +152,6 @@ class Graphics : public D2DInterface<ID2D1HwndRenderTarget> {
         return GetLastResult();
     };
 
-  public:
     void SetGraphicsSize(
         const D2D_SIZE_U& size
     ) {
