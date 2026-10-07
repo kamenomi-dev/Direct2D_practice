@@ -144,7 +144,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="direct2d_base.h" />
+    <ClInclude Include="direct2d_render.h" />
     <ClInclude Include="direct2d_resource_manager.h" />
+    <ClInclude Include="direct2d_window_const_scale.h" />
     <ClInclude Include="Direct2D_练习-窗口.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="direct2d_dwrite.h" />

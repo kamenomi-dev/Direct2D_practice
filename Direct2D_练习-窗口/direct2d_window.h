@@ -1,13 +1,15 @@
 #pragma once
+#include "direct2d_window_const_scale.h"
+#include "direct2d_base.h"
+#include "direct2d_dwrite.h"
+#include "direct2d_render.h"
+#include "direct2d_resource_manager.h"
+
 #include <bitset>
 #include <string>
 #include <unordered_map>
 #include <d2d1.h>
 #include <windows.h>
-
-#include "direct2d_base.h"
-#include "direct2d_dwrite.h"
-#include "direct2d_resource_manager.h"
 
 namespace Direct2D_UI {
 struct MouseStatus {
@@ -34,17 +36,17 @@ struct WindowProperties {
     D2D1::ColorF BackgroundColor = {0x28282B, 1.f};
 };
 
-class Window {
+class BaseWindow {
   public:
     inline static std::wstring WindowClassName = L"Direct2D_window";
 
   private:
-    inline static HINSTANCE                         _Instance = nullptr;
-    inline static std::unordered_map<HWND, Window*> _InstanceMap{};
+    inline static HINSTANCE                             _Instance = nullptr;
+    inline static std::unordered_map<HWND, BaseWindow*> _InstanceMap{};
 
   public:
-    Window() = default;
-    virtual ~Window() {
+    BaseWindow() = default;
+    virtual ~BaseWindow() {
         DiscardDeviceResources();
         DiscardDeviceIndependentResources();
 
@@ -78,7 +80,7 @@ class Window {
         classInfo.lpszMenuName  = L"";
         classInfo.lpszClassName = WindowClassName.c_str();
         classInfo.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-        classInfo.lpfnWndProc   = Window::MainMessageProcedure;
+        classInfo.lpfnWndProc   = BaseWindow::MainMessageProcedure;
         classInfo.hIcon         = nullptr;
         classInfo.hIconSm       = nullptr;
         classInfo.hCursor       = LoadCursor(nullptr, IDC_ARROW);
@@ -145,8 +147,8 @@ class Window {
     virtual void DiscardDeviceResources() { _nativeBrush.Discard(); };
 
     virtual void CreateDeviceIndependentResources() {
-        const auto captionHeight = GetSystemMetrics(SM_CYCAPTION);
-        GetDWriteFactory().CreateTextFormat(L"Segoe UI", DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, captionHeight * 0.75f, _nativeTextFormat);
+        const auto captionHeight = (float)(Direct2D_UI::Window::ConstScale::WINDOW_CAPTION_HEIGHT * 96.0 / _currentDpi);
+        GetDWriteFactory().CreateTextFormat(L"Segoe UI", DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, captionHeight * 0.5f, _nativeTextFormat);
         _nativeTextFormat.SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
     };
     virtual void DiscardDeviceIndependentResources() { _nativeTextFormat.Discard(); };
@@ -158,27 +160,32 @@ class Window {
     }
 
   private:
+    void FillRectangleOnce(
+        _In_ Graphics& graphics, _In_ const D2D1_RECT_F& rect, _In_ const D2D1::ColorF& color
+    ) {
+        _nativeBrush.SetColor(color);
+        graphics.FillRectangle(rect, _nativeBrush);
+    }
+
     void NativeRenderWindowFrame(
         Graphics& graphics
     ) {
-        D2D1_RECT_F rect = {0, 0, GetSize().width * 1.f, GetSize().height * 1.f};
-        _nativeBrush.SetColor(_properties.BackgroundColor);
-        graphics.FillRectangle(rect, _nativeBrush);
+        auto rect = D2D1::RectF(0, 0, (float)GetSize().width, (float)GetSize().height);
+        FillRectangleOnce(graphics, rect, _properties.BackgroundColor);
 
-        const auto height = (float)GetSystemMetrics(SM_CYCAPTION) + (float)GetSystemMetrics(SM_CYSIZEFRAME) + (float)GetSystemMetrics(SM_CXPADDEDBORDER);
-        rect.bottom       = height;
-        _nativeBrush.SetColor(_properties.CaptionColor);
-        graphics.FillRectangle(rect, _nativeBrush);
+        rect.bottom = (float)(Direct2D_UI::Window::ConstScale::WINDOW_CAPTION_HEIGHT / 96.0 * _currentDpi);
+        FillRectangleOnce(graphics, rect, _properties.CaptionColor);
 
         _nativeBrush.SetColor(_properties.TextColor);
         _nativeTextFormat.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+        _nativeTextFormat.SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
         graphics.GetPointer()->DrawTextW(_windowTitle.c_str(), (uint32_t)_windowTitle.length(), _nativeTextFormat.GetPointer(), rect, _nativeBrush.GetPointer());
 
-        const auto buttonWidth  = GetSystemMetrics(SM_CXSIZE);
-        rect.right             -= (buttonWidth * 3);
+        rect.right -= 3 * (float)(Direct2D_UI::Window::ConstScale::WINDOW_CONTROL_PANEL_BUTTON_WIDTH / 96.0 * _currentDpi);
 
-        Resource::ResourceManager::GetResourceManager();
-        graphics.GetPointer()->DrawTextLayout({.x = rect.right, .y = 0.f}, Resource::ResourceManager::SystemControlPanelLayout.GetPointer(), _nativeBrush.GetPointer());
+        graphics.DrawTextLayout(
+            {.x = rect.right, .y = 0.f}, _maximized ? Resource::ResourceManager::MaximumControlPanelLayout : Resource::ResourceManager::NormalControlPanelLayout, _nativeBrush
+        );
     }
 
     void NativeRender(
@@ -189,24 +196,24 @@ class Window {
 
         // Caption
         {
-            const auto  height      = (float)GetSystemMetrics(SM_CYCAPTION) + (float)GetSystemMetrics(SM_CYSIZEFRAME) + (float)GetSystemMetrics(SM_CXPADDEDBORDER);
-            D2D1_RECT_F rect        = {0, 0, GetSize().width * 1.f, height};
-            const auto  buttonWidth = GetSystemMetrics(SM_CXSIZE);
+            const auto  width  = (float)(Direct2D_UI::Window::ConstScale::WINDOW_CONTROL_PANEL_BUTTON_WIDTH / 96.0 * _currentDpi);
+            const auto  height = (float)(Direct2D_UI::Window::ConstScale::WINDOW_CONTROL_PANEL_BUTTON_HEIGHT / 96.0 * _currentDpi);
+            D2D1_RECT_F rect   = {0, 0, GetSize().width * 1.f, height};
 
             if (_mouse.hittestResult == HTCLOSE || _mouse.hittestResult == HTZOOM || _mouse.hittestResult == HTREDUCE) {
                 if (_mouse.hittestResult == HTCLOSE) {
-                    rect.left  = (float)GetSize().width - (float)buttonWidth * 1;
-                    rect.right = (float)GetSize().width - (float)buttonWidth * 0;
+                    rect.left  = (float)GetSize().width - width * 1;
+                    rect.right = (float)GetSize().width - width * 0;
                 }
 
                 if (_mouse.hittestResult == HTZOOM) {
-                    rect.left  = (float)GetSize().width - (float)buttonWidth * 2;
-                    rect.right = (float)GetSize().width - (float)buttonWidth * 1;
+                    rect.left  = (float)GetSize().width - width * 2;
+                    rect.right = (float)GetSize().width - width * 1;
                 }
 
                 if (_mouse.hittestResult == HTREDUCE) {
-                    rect.left  = (float)GetSize().width - (float)buttonWidth * 3;
-                    rect.right = (float)GetSize().width - (float)buttonWidth * 2;
+                    rect.left  = (float)GetSize().width - width * 3;
+                    rect.right = (float)GetSize().width - width * 2;
                 }
 
                 _nativeBrush.SetColor(D2D1::ColorF{D2D1::ColorF::GhostWhite, 0.5});
@@ -234,9 +241,9 @@ class Window {
             return true;
         }
 
-        if (const auto captionHight = GetSystemMetrics(SM_CYCAPTION); position.y <= borderSize + captionHight) {
-            const auto buttonWidth = GetSystemMetrics(SM_CXSIZE);
-            const auto relatedLeft = (int)_windowSize.width - 3 * buttonWidth;
+        if (const auto captionHight = Direct2D_UI::Window::ConstScale::WINDOW_CONTROL_PANEL_BUTTON_HEIGHT / 96.0 * _currentDpi; position.y <= borderSize + captionHight) {
+            const auto buttonWidth = Direct2D_UI::Window::ConstScale::WINDOW_CONTROL_PANEL_BUTTON_WIDTH / 96.0 * _currentDpi;
+            const auto relatedLeft = _windowSize.width - 3 * buttonWidth;
             if (relatedLeft + 2 * buttonWidth <= position.x) {
                 result = HTCLOSE;
                 return true;
@@ -282,8 +289,7 @@ class Window {
         static bool     isTracked = false;
         TRACKMOUSEEVENT trackEvent{.cbSize = sizeof TRACKMOUSEEVENT, .dwFlags = TME_LEAVE | TME_NONCLIENT, .hwndTrack = _window};
 
-        const bool isMouseLeaveMessage = message == WM_NCMOUSELEAVE;
-        if (isMouseLeaveMessage) {
+        if (message == WM_NCMOUSELEAVE) {
             isTracked = false;
             _mouse    = MouseStatus{.position = _mouse.position};
             InvalidateRect(_window, nullptr, FALSE);
@@ -314,14 +320,11 @@ class Window {
             _mouse.hittestResult = (char)actualHitTest;
         }
 
-        if (isNCMouseMessage) {
-            _mouse.isNonClient = true;
-        }
+        _mouse.isMove      = isMouseMoveMessage;
+        _mouse.isNonClient = isNCMouseMessage;
 
-        if (isMouseMoveMessage) {
-            _mouse.isMove = true;
-
-            if (!isTracked && isNCMouseMessage) {
+        if (_mouse.isMove) {
+            if (!isTracked && _mouse.isNonClient) {
                 isTracked = true;
                 TrackMouseEvent(&trackEvent);
             }
@@ -352,7 +355,7 @@ class Window {
 
         if (message == WM_NCLBUTTONUP) {
             if (wParam == HTREDUCE) ShowWindow(_window, SW_MINIMIZE);
-            if (wParam == HTZOOM) ShowWindow(_window, SW_MAXIMIZE);
+            if (wParam == HTZOOM) ShowWindow(_window, _maximized ? SW_RESTORE : SW_MAXIMIZE);
             if (wParam == HTCLOSE) DestroyWindow(_window);
         }
 
@@ -369,6 +372,8 @@ class Window {
         result = NULL;
 
         if (message == WM_CREATE) {
+            _currentDpi = GetDpiForWindow(_window);
+
             Direct2D_UI::GetDirect2DFactory().AttachWindow(_window, _graphics);
             CreateDeviceIndependentResources();
             CreateDeviceResources(_graphics);
@@ -382,8 +387,9 @@ class Window {
         }
 
         if (message == WM_SIZE) {
-            const D2D_SIZE_U size = {LOWORD(lParam), HIWORD(lParam)};
+            const auto size = D2D1::SizeU(LOWORD(lParam), HIWORD(lParam));
             _graphics.SetGraphicsSize(size);
+            _maximized  = wParam == SIZE_MAXIMIZED;
             _windowSize = size;
             return true;
         }
@@ -397,18 +403,16 @@ class Window {
             PAINTSTRUCT ps{};
             BeginPaint(_window, &ps);
 
-            {
-                _graphics.BeginDraw();
-                NativeRender(_graphics);
-                OnRender(_graphics);
+            _graphics.BeginDraw();
+            NativeRender(_graphics);
+            OnRender(_graphics);
 
-                if (auto status = _graphics.EndDraw(); FAILED(status) || status == D2DERR_RECREATE_TARGET) {
-                    DiscardDeviceResources();
-                    _graphics.Discard();
+            if (auto status = _graphics.EndDraw(); FAILED(status) || status == D2DERR_RECREATE_TARGET) {
+                DiscardDeviceResources();
+                _graphics.Discard();
 
-                    Direct2D_UI::GetDirect2DFactory().AttachWindow(_window, _graphics);
-                    CreateDeviceResources(_graphics);
-                }
+                Direct2D_UI::GetDirect2DFactory().AttachWindow(_window, _graphics);
+                CreateDeviceResources(_graphics);
             }
 
             EndPaint(_window, &ps);
@@ -464,7 +468,7 @@ class Window {
     static LRESULT CALLBACK MainMessageProcedure(
         HWND window, UINT message, WPARAM wParam, LPARAM lParam
     ) {
-        Window* currentInstance = nullptr;
+        BaseWindow* currentInstance = nullptr;
         {
             auto result = _InstanceMap.find(window);
             if (result != _InstanceMap.end()) {
@@ -479,7 +483,7 @@ class Window {
 
         if (message == WM_CREATE) {
             const auto* createStruct = (CREATESTRUCTW*)lParam;
-            currentInstance          = (Window*)createStruct->lpCreateParams;
+            currentInstance          = (BaseWindow*)createStruct->lpCreateParams;
 
             if (currentInstance) {
                 currentInstance->_window = window;
@@ -515,9 +519,11 @@ class Window {
   private:
     HWND _window = nullptr;
 
+    uint32_t              _currentDpi = 96;
     std::wstring          _windowTitle;
     D2D1_POINT_2L         _windowPosition = {0, 0};
     D2D1_SIZE_U           _windowSize     = {0, 0};
+    bool                  _maximized;
     Direct2D_UI::Graphics _graphics;
 
   private:

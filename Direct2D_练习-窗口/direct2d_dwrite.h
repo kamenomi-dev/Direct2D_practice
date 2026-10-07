@@ -45,12 +45,29 @@ class TextLayout : public D2DInterface<IDWriteTextLayout> {
     bool SetCharacterSpacing(
         float leadingSpacing, float trailingSpacing, float minimumAdvanceWidth, const DWRITE_TEXT_RANGE& range
     ) {
-        IDWriteTextLayout1* layout1 = nullptr;
-        if (const auto hResult = GetPointer()->QueryInterface(IID_PPV_ARGS(&layout1)); FAILED(hResult)) {
-            return false;
+        if (D2DInterface<IDWriteTextLayout1> layout; As<IDWriteTextLayout1>(layout)) {
+            return SUCCEEDED(layout.GetPointer()->SetCharacterSpacing(leadingSpacing, trailingSpacing, minimumAdvanceWidth, range));
         }
 
-        return SUCCEEDED(layout1->SetCharacterSpacing(leadingSpacing, trailingSpacing, minimumAdvanceWidth, range));
+        return false;
+    }
+
+    void SetTextAlignment(
+        const DWRITE_TEXT_ALIGNMENT& textAlignment
+    ) {
+        SetLastResult(GetPointer()->SetTextAlignment(textAlignment));
+    }
+
+    void SetParagraphAlignment(
+        const DWRITE_PARAGRAPH_ALIGNMENT& paragraphAlignment
+    ) {
+        SetLastResult(GetPointer()->SetParagraphAlignment(paragraphAlignment));
+    }
+
+    void SetWordWrapping(
+        const DWRITE_WORD_WRAPPING& wordWrapping
+    ) {
+        SetLastResult(GetPointer()->SetWordWrapping(wordWrapping));
     }
 
   private:

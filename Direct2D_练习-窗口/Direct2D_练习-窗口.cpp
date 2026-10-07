@@ -6,12 +6,14 @@
 int APIENTRY wWinMain(
     _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow
 ) {
-    class MainWindow : public Direct2D_UI::Window {
+    Direct2D_UI::Resource::ResourceManager::GetResourceManager();
+
+    class MainWindow : public Direct2D_UI::BaseWindow {
       public:
         explicit MainWindow(
             HINSTANCE instance
         )
-        : Direct2D_UI::Window() {
+        : Direct2D_UI::BaseWindow() {
             Initialize(instance);
             Create();
         }
@@ -22,7 +24,7 @@ int APIENTRY wWinMain(
             Direct2D_UI::Graphics& graphics
         ) final {
             __super::CreateDeviceResources(graphics);
-            graphics.CreateSolidColorBrush(D2D1::ColorF(.5,.5,.5,.5), brush);
+            graphics.CreateSolidColorBrush(D2D1::ColorF(.5, .5, .5, .5), brush);
         }
 
         void DiscardDeviceResources() final {
