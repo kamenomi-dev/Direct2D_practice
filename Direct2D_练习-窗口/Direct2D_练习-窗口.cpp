@@ -6,9 +6,9 @@
 int APIENTRY wWinMain(
     _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow
 ) {
-    Direct2D_UI::Resource::ResourceManager::GetResourceManager();
+    Direct2D_UI::Direct2D::Resource::ResourceManager::GetInstance();
 
-    class MainWindow : public Direct2D_UI::BaseWindow {
+    class MainWindow final : public Direct2D_UI::BaseWindow {
       public:
         explicit MainWindow(
             HINSTANCE instance
@@ -21,7 +21,7 @@ int APIENTRY wWinMain(
         ~MainWindow() = default;
 
         void CreateDeviceResources(
-            Direct2D_UI::Graphics& graphics
+            Direct2D_UI::Direct2D::Graphics& graphics
         ) final {
             __super::CreateDeviceResources(graphics);
             graphics.CreateSolidColorBrush(D2D1::ColorF(.5, .5, .5, .5), brush);
@@ -33,20 +33,20 @@ int APIENTRY wWinMain(
         }
 
         bool OnRender(
-            Direct2D_UI::Graphics& graphics
+            Direct2D_UI::Direct2D::Graphics& graphics
         ) final {
             D2D1_ROUNDED_RECT rect{0};
-            rect.rect.left   = GetMousePosition().x - 20.f;
-            rect.rect.top    = GetMousePosition().y - 20.f;
-            rect.rect.right  = GetMousePosition().x + 20.f;
-            rect.rect.bottom = GetMousePosition().y + 20.f;
+            rect.rect.left   = GetMousePosition().x - 8.f;
+            rect.rect.top    = GetMousePosition().y - 8.f;
+            rect.rect.right  = GetMousePosition().x + 8.f;
+            rect.rect.bottom = GetMousePosition().y + 8.f;
             rect.radiusX = rect.radiusY = 5.f;
             graphics.GetPointer()->FillRoundedRectangle(rect, brush.GetPointer());
 
             return true;
         }
 
-        Direct2D_UI::SolidColorBrush brush;
+        Direct2D_UI::Direct2D::SolidColorBrush brush;
     };
 
     MainWindow window{hInstance};

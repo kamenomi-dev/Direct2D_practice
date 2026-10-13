@@ -21,19 +21,25 @@
     <ClInclude Include="Direct2D_练习-窗口.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="direct2d_render.h">
+    <ClInclude Include="direct2d\render.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="direct2d_dwrite.h">
+    <ClInclude Include="direct2d\dwrite.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="direct2d_resource_manager.h">
+    <ClInclude Include="direct2d\resource_manager.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="direct2d_window_const_scale.h">
+    <ClInclude Include="window_const_scale.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="direct2d_base.h">
+    <ClInclude Include="direct2d\interface.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="components\component.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="components\window.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -41,7 +47,7 @@
     <ClCompile Include="Direct2D_练习-窗口.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="direct2d_window.h">
+    <ClCompile Include="window.h">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

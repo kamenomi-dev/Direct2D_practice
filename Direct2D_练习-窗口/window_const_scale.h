@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <Windows.h>
 #include <stdint.h>
 namespace Direct2D_UI::Window::ConstScale {

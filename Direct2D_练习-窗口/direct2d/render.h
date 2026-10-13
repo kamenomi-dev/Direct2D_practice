@@ -1,13 +1,13 @@
-#pragma once
-#include "direct2d_base.h"
-#include "direct2d_dwrite.h"
+﻿#pragma once
+#include "interface.h"
+#include "dwrite.h"
 
 #include <type_traits>
 #include <Windows.h>
 #include <dwmapi.h>
 #pragma comment(lib, "dwmapi.lib")
 
-namespace Direct2D_UI {
+namespace Direct2D_UI::Direct2D {
 template <class T>
     requires std::is_base_of_v<ID2D1Resource, T>
 class D2DResource : public D2DInterface<T> {
@@ -16,7 +16,7 @@ class D2DResource : public D2DInterface<T> {
 
   public:
     D2DResource() = default;
-    D2DResource(
+    explicit D2DResource(
         ID2D1HwndRenderTarget* target
     ) {
         if (target == nullptr) {
@@ -82,20 +82,28 @@ class Graphics : public D2DInterface<ID2D1HwndRenderTarget> {
   public:
     Graphics() = default;
 
+    void AddRef(
+        _Out_ Graphics& out
+    ) {
+        __super::AddRef(out);
+        out.SetPointer(GetPointer());
+        out.SetLastResult(S_OK);
+    }
+
     void    BeginDraw() { GetPointer()->BeginDraw(); }
     HRESULT EndDraw() { return GetPointer()->EndDraw(); }
 
     HRESULT CreateSolidColorBrush(
         SolidColorBrush& out
     ) {
-        Direct2D_UI::SolidColorBrush{GetPointer()}.Move(out);
+        Direct2D::SolidColorBrush{GetPointer()}.Move(out);
         return GetLastResult();
     };
 
     HRESULT CreateSolidColorBrush(
         const D2D1::ColorF& color, SolidColorBrush& out
     ) {
-        Direct2D_UI::SolidColorBrush{GetPointer(), color}.Move(out);
+        Direct2D::SolidColorBrush{GetPointer(), color}.Move(out);
         return GetLastResult();
     };
 
@@ -128,32 +136,38 @@ class Graphics : public D2DInterface<ID2D1HwndRenderTarget> {
     }
 
   private:
-    friend class Factory;
+    friend class D2DFactory;
     Graphics(
         ID2D1Factory* factory, HWND window
     ) {
         RECT rect;
         GetWindowRect(window, &rect);
 
-        SetLastResult(factory->CreateHwndRenderTarget(
-            D2D1::RenderTargetProperties(), D2D1::HwndRenderTargetProperties(window, D2D1::SizeU(rect.right - rect.left, rect.bottom - rect.top)), &GetPointerRef()
-        ));
+        // 默认 dpi 为 0 时 Direct2D 取的是主显示器 dpi，不随窗口所在显示器变化；
+        // 固定为 96 使 1 DIP == 1 像素，尺寸统一由窗口按 _currentDpi / 96 缩放
+        const auto properties = D2D1::RenderTargetProperties(D2D1_RENDER_TARGET_TYPE_DEFAULT, D2D1::PixelFormat(), 96.f, 96.f);
+
+        SetLastResult(
+            factory->CreateHwndRenderTarget(properties, D2D1::HwndRenderTargetProperties(window, D2D1::SizeU(rect.right - rect.left, rect.bottom - rect.top)), &GetPointerRef())
+        );
     };
 };
 
-class Factory : public D2DInterface<ID2D1Factory> {
+class D2DFactory final : public D2DInterface<ID2D1Factory> {
   public:
-    Factory() { SetLastResult(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &GetPointerRef())); }
+    static auto& GetInstance() {
+        static Direct2D::D2DFactory factory{};
+        return factory;
+    }
 
     void AttachWindow(
         HWND window, _Out_ Graphics& graphics
     ) {
         Graphics{GetPointer(), window}.Move(graphics);
     }
-};
 
-inline auto& GetDirect2DFactory() {
-    static Direct2D_UI::Factory factory{};
-    return factory;
-}
-} // namespace Direct2D_UI
+  private:
+    D2DFactory() { SetLastResult(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &GetPointerRef())); }
+    ~D2DFactory() = default;
+};
+} // namespace Direct2D_UI::Direct2D

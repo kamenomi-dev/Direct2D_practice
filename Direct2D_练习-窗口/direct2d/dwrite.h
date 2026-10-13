@@ -1,15 +1,16 @@
-#pragma once
-#include "direct2d_base.h"
+﻿#pragma once
+#include "interface.h"
 
 #include <string>
 #include <dwrite.h>
 #include <dwrite_1.h>
 #pragma comment(lib, "Dwrite.lib")
 
-namespace Direct2D_UI {
+namespace Direct2D_UI::Direct2D {
 class TextFormat : public D2DInterface<IDWriteTextFormat> {
   public:
-    TextFormat() = default;
+    TextFormat()          = default;
+    virtual ~TextFormat() = default;
 
     void SetTextAlignment(
         const DWRITE_TEXT_ALIGNMENT& textAlignment
@@ -40,7 +41,8 @@ class TextFormat : public D2DInterface<IDWriteTextFormat> {
 
 class TextLayout : public D2DInterface<IDWriteTextLayout> {
   public:
-    TextLayout() = default;
+    TextLayout()          = default;
+    virtual ~TextLayout() = default;
 
     bool SetCharacterSpacing(
         float leadingSpacing, float trailingSpacing, float minimumAdvanceWidth, const DWRITE_TEXT_RANGE& range
@@ -79,25 +81,39 @@ class TextLayout : public D2DInterface<IDWriteTextLayout> {
     }
 };
 
-class DWriteFactory : public D2DInterface<IDWriteFactory1> {
+class DWriteFactory final : public D2DInterface<IDWriteFactory1> {
   public:
-    DWriteFactory() { SetLastResult(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory1), (IUnknown**)&GetPointerRef())); }
+    static auto& GetInstance() {
+        static DWriteFactory factory{};
+        return factory;
+    }
 
-    void CreateTextFormat(
+    _Success_(return == true)
+    bool CreateTextFormat(
         const std::wstring& fontFamily, DWRITE_FONT_WEIGHT weight, DWRITE_FONT_STYLE style, DWRITE_FONT_STRETCH stretch, float size, _Out_ TextFormat& textFormat
     ) {
+        if (!IsValid()) {
+            return false;
+        }
+
         TextFormat{GetPointer(), fontFamily, weight, style, stretch, size}.Move(textFormat);
+        return true;
     }
 
-    void CreateTextLayout(
+    _Success_(return == true)
+    bool CreateTextLayout(
         const std::wstring& string, _In_ TextFormat& textFormat, D2D1_SIZE_F maximum, _Out_ TextLayout& textLayout
     ) {
-        TextLayout{GetPointer(), string, textFormat.GetPointer(), maximum}.Move(textLayout);
-    }
-};
+        if (!IsValid() && !textFormat.IsValid()) {
+            return false;
+        }
 
-inline auto& GetDWriteFactory() {
-    static DWriteFactory factory{};
-    return factory;
-}
-} // namespace Direct2D_UI
+        TextLayout{GetPointer(), string, textFormat.GetPointer(), maximum}.Move(textLayout);
+        return true;
+    }
+
+  private:
+    DWriteFactory() { SetLastResult(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory1), (IUnknown**)&GetPointerRef())); }
+    ~DWriteFactory() = default;
+};
+} // namespace Direct2D_UI::Direct2D

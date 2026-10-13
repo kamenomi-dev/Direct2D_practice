@@ -3,8 +3,19 @@
 #include <d2d1.h>
 #pragma comment(lib, "d2d1.lib")
 
-namespace Direct2D_UI {
-// Warning: it exists a unpredictable issue that the discard function may cause ignoring last result and the pointer's validity
+namespace Direct2D_UI::Direct2D {
+inline D2D1_POINT_2F PointLToF(
+    _In_ const D2D1_POINT_2L& point
+) {
+    return {.x = (float)point.x, .y = (float)point.y};
+}
+
+inline D2D1_SIZE_F SizeUToF(
+    _In_ const D2D1_SIZE_U& size
+) {
+    return {.width = (float)size.width, .height = (float)size.height};
+}
+
 template <class T>
     requires std::is_base_of_v<IUnknown, T>
 class D2DInterface {
@@ -16,6 +27,9 @@ class D2DInterface {
             _pointer = nullptr;
         }
     }
+
+    D2DInterface(const D2DInterface&) = delete;
+    D2DInterface(D2DInterface&&)      = delete;
 
     bool IsValid() { return _pointer != nullptr && _lastResult == S_OK; }
 
@@ -39,6 +53,12 @@ class D2DInterface {
 
         transferredOut.Move(out);
         return true;
+    }
+
+    virtual void AddRef(
+        _Out_ D2DInterface<T>& out
+    ) {
+        GetPointer()->AddRef();
     }
 
     virtual void Move(
@@ -75,4 +95,4 @@ class D2DInterface {
     T*      _pointer    = nullptr;
     HRESULT _lastResult = S_OK;
 };
-} // namespace Direct2D_UI
+} // namespace Direct2D_UI::Direct2D
