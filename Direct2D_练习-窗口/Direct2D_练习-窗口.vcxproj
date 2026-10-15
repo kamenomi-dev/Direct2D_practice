@@ -148,6 +148,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="components\component.h" />
+    <ClInclude Include="components\label.h" />
     <ClInclude Include="components\window.h" />
     <ClInclude Include="direct2d\interface.h" />
     <ClInclude Include="direct2d\render.h" />
