@@ -16,6 +16,39 @@ inline D2D1_SIZE_F SizeUToF(
     return {.width = (float)size.width, .height = (float)size.height};
 }
 
+inline D2D1_RECT_L RectFToL(
+    _In_ const D2D1_RECT_F& rect
+) {
+    return {
+        .left   = (int32_t)rect.left,
+        .top    = (int32_t)rect.top,
+        .right  = (int32_t)rect.right,
+        .bottom = (int32_t)rect.bottom,
+    };
+}
+
+inline D2D1_RECT_F PointAndSizeFToRectF(
+    _In_ const D2D1_POINT_2F& point, _In_ const D2D1_SIZE_F& size
+) {
+    return {
+        .left   = point.x,
+        .top    = point.y,
+        .right  = point.x + size.width,
+        .bottom = point.y + size.height,
+    };
+}
+
+inline D2D1_RECT_L PointAndSizeFToRectL(
+    _In_ const D2D1_POINT_2F& point, _In_ const D2D1_SIZE_F& size
+) {
+    return {
+        .left   = (int32_t)point.x,
+        .top    = (int32_t)point.y,
+        .right  = (int32_t)point.x + (int32_t)size.width,
+        .bottom = (int32_t)point.y + (int32_t)size.height,
+    };
+}
+
 template <class T>
     requires std::is_base_of_v<IUnknown, T>
 class D2DInterface {

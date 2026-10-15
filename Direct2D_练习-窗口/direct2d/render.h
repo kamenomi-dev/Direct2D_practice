@@ -107,12 +107,52 @@ class Graphics : public D2DInterface<ID2D1HwndRenderTarget> {
         return GetLastResult();
     };
 
-    void SetGraphicsSize(
+    _Success_(return == true)
+    bool SetGraphicsSize(
         const D2D_SIZE_U& size
     ) {
+        if (!IsValid()) {
+            return false;
+        }
+
         GetPointer()->Resize(size);
+        return true;
     }
 
+    _Success_(return == true)
+    bool SetTransform(const D2D1_MATRIX_3X2_F& matrix) {
+        if (!IsValid()) {
+            return false;
+        }
+
+        GetPointer()->SetTransform(matrix);
+        return true;
+    }
+
+    _Success_(return == true)
+    bool PushAxisAlignedClip(
+        const D2D1_RECT_F& rect
+    ) {
+        if (!IsValid()) {
+            return false;
+        }
+
+        GetPointer()->PushAxisAlignedClip(rect, D2D1_ANTIALIAS_MODE_ALIASED);
+        return true;
+    }
+
+    _Success_(
+        return == true
+    ) bool PopAxisAlignedClip() {
+        if (!IsValid()) {
+            return false;
+        }
+
+        GetPointer()->PopAxisAlignedClip();
+        return true;
+    }
+
+    _Success_(return == true)
     bool FillRectangle(
         const D2D1_RECT_F& rect, _In_ SolidColorBrush& brush
     ) {
@@ -124,6 +164,19 @@ class Graphics : public D2DInterface<ID2D1HwndRenderTarget> {
         return true;
     }
 
+    _Success_(return == true)
+    bool DrawText(
+        _In_ const std::wstring& text, _In_ const D2D1_RECT_F& rect, _In_ TextFormat& format, _In_ SolidColorBrush& brush
+    ) {
+        if (!format.IsValid() || !brush.IsValid()) {
+            return false;
+        }
+
+        GetPointer()->DrawTextW(text.c_str(), (uint32_t)text.length(), format.GetPointer(), rect, brush.GetPointer());
+        return true;
+    }
+
+    _Success_(return == true)
     bool DrawTextLayout(
         const D2D1_POINT_2F& position, _In_ TextLayout& layout, _In_ SolidColorBrush& brush
     ) {

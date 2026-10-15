@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "window_const_scale.h"
 #include "direct2d/interface.h"
 #include "direct2d/dwrite.h"
@@ -7,6 +7,7 @@
 #include "components/window.h"
 
 #include <bitset>
+#include <chrono>
 #include <string>
 #include <unordered_map>
 #include <d2d1.h>
@@ -309,10 +310,23 @@ class BaseWindow {
             CreateDeviceIndependentResources();
             CreateDeviceResources(_graphics);
             _componentRoot.UpdateRenderTarget(_graphics);
+
+            _componentRoot.SetInvalidateNotifier([this](const D2D1_RECT_F& rect) {
+                if (rect.right <= rect.left || rect.bottom <= rect.top) {
+                    InvalidateRect(_window, nullptr, FALSE);
+                    return;
+                }
+
+                const RECT dirty{(LONG)rect.left, (LONG)rect.top, (LONG)rect.right, (LONG)rect.bottom};
+                InvalidateRect(_window, &dirty, FALSE);
+            });
+
+            SetTimer(_window, (UINT_PTR)1, 16, nullptr);
             return true;
         }
 
         if (message == WM_DESTROY) {
+            KillTimer(_window, 1);
             DiscardDeviceResources();
             DiscardDeviceIndependentResources();
             return true;
@@ -340,6 +354,15 @@ class BaseWindow {
             Direct2D::Resource::ResourceManager::GetInstance().UpdateResources(_currentDpi);
             InvalidateRect(_window, nullptr, FALSE);
             return true;
+        }
+
+        if (message == WM_TIMER) {
+            if (wParam == 1) {
+                _componentRoot.TickAnimations(std::chrono::steady_clock::now());
+                return true;
+            }
+
+            return false;
         }
 
         if (message == WM_PAINT) {

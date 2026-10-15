@@ -44,6 +44,15 @@ class Window final : public Component {
     D2D1_POINT_2F GetPosition() const override { return Direct2D::PointLToF(_windowProperties.WindowPosition); };
     D2D1_SIZE_F   GetSize() const override { return Direct2D::SizeUToF(_windowProperties.WindowSize); };
 
+    void Invalidate(
+        const D2D1_RECT_F& rect
+    ) override {
+        const auto transRect = Direct2D::RectFToL(rect);
+        if (const auto window = GetRenderTargetWindow()) {
+            InvalidateRect(window, &transRect, FALSE);
+        }
+    }
+
     D2D1::ColorF& GetTextColor() { return _windowProperties.TextColor; }
     D2D1::ColorF& GetCaptionColor() { return _windowProperties.CaptionColor; }
     D2D1::ColorF& GetBackgroundColor() { return _windowProperties.BackgroundColor; }
