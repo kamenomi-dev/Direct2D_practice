@@ -22,19 +22,25 @@ int APIENTRY wWinMain(
 
         void CreateDeviceResources(
             Direct2D_UI::Direct2D::Graphics& graphics
-        ) final {
+        ) override {
             __super::CreateDeviceResources(graphics);
             graphics.CreateSolidColorBrush(D2D1::ColorF(.5, .5, .5, .5), brush);
         }
 
-        void DiscardDeviceResources() final {
+        void DiscardDeviceResources() override {
             brush.Discard();
             __super::DiscardDeviceResources();
         }
 
+        void InitializeComponents() override {
+            label = std::make_shared<Direct2D_UI::Components::DurableLabel>();
+            label->SetContent(L"Hello world!");
+            GetRenderableWindow().AppendChild(label);
+        }
+
         bool OnRender(
             Direct2D_UI::Direct2D::Graphics& graphics
-        ) final {
+        ) override {
             D2D1_ROUNDED_RECT rect{0};
             rect.rect.left   = GetMousePosition().x - 8.f;
             rect.rect.top    = GetMousePosition().y - 8.f;
@@ -46,7 +52,8 @@ int APIENTRY wWinMain(
             return true;
         }
 
-        Direct2D_UI::Direct2D::SolidColorBrush brush;
+        Direct2D_UI::Direct2D::SolidColorBrush                 brush;
+        std::shared_ptr<Direct2D_UI::Components::DurableLabel> label;
     };
 
     MainWindow window{hInstance};

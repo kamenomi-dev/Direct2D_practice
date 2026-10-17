@@ -71,10 +71,24 @@ class SolidColorBrush : public D2DResource<ID2D1SolidColorBrush> {
     };
 
   public:
-    void SetColor(
+    _Success_(return == true)
+    bool SetColor(
         const D2D1::ColorF& color
     ) {
-        if (IsValid()) GetPointer()->SetColor(color);
+        if (!IsValid()) {
+            return false;
+        }
+
+        GetPointer()->SetColor(color);
+        return true;
+    }
+
+    D2D1_COLOR_F GetColor() {
+        if (!IsValid()) {
+            return D2D1::ColorF{NULL};
+        }
+
+        return GetPointer()->GetColor();
     }
 };
 

@@ -11,7 +11,7 @@
 #include <string>
 #include <unordered_map>
 #include <d2d1.h>
-#include <windows.h>
+#include <Windows.h>
 
 namespace Direct2D_UI {
 class BaseWindow {
@@ -63,13 +63,15 @@ class BaseWindow {
         return false;
     }
 
-    auto& GetMousePosition() const { return _mouse.position; }
-
     void SetBackgroundColor(
         const D2D1::ColorF& color
     ) {
         _nativeBrush.SetColor(_componentRoot._windowProperties.BackgroundColor = color);
     }
+
+    auto& GetMousePosition() const { return _mouse.position; }
+
+    auto& GetRenderableWindow() { return _componentRoot; }
 
     void Initialize(
         HINSTANCE instance, std::wstring title = L"Untitled Window 1", D2D1_POINT_2L position = {0, 0}, D2D1_SIZE_U size = {800, 600}
@@ -131,6 +133,8 @@ class BaseWindow {
     virtual void DiscardDeviceIndependentResources() {
         // Comment: The main resources are conquered by ResourceManager class.
     };
+
+    virtual void InitializeComponents() = 0;
 
     // [[deprecated("后期窗口或可能不支持直接这样绘制")]]
     virtual bool OnRender(
@@ -309,12 +313,13 @@ class BaseWindow {
             Direct2D::D2DFactory::GetInstance().AttachWindow(_window, _graphics);
             CreateDeviceIndependentResources();
             CreateDeviceResources(_graphics);
+            InitializeComponents();
+
             _componentRoot.UpdateRenderTarget(_graphics);
             return true;
         }
 
         if (message == WM_DESTROY) {
-            KillTimer(_window, 1);
             DiscardDeviceResources();
             DiscardDeviceIndependentResources();
             return true;
@@ -351,7 +356,9 @@ class BaseWindow {
             _graphics.BeginDraw();
             _graphics.GetPointer()->Clear();
             OnRender(_graphics);
-            _componentRoot.Render();
+
+            Components::ComponentRenderEvent event{};
+            _componentRoot.MessageProcedure(&event);
 
             if (auto status = _graphics.EndDraw(); FAILED(status) || status == D2DERR_RECREATE_TARGET) {
                 DiscardDeviceResources();

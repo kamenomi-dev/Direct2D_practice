@@ -110,10 +110,11 @@ class Component {
     std::list<ComponentPtr> _children;
 
   public:
-    virtual bool Render() = 0;
+    // Comment: 组件的左上角是渲染原点，里面的渲染就不用带入 GetPosition 的值了。
+    virtual bool Render(Direct2D::Graphics&) = 0;
 
-    virtual void CreateResources()  = 0;
-    virtual void DiscardResources() = 0;
+    virtual void CreateResources(Direct2D::Graphics& graphics) = 0;
+    virtual void DiscardResources()                            = 0;
 
     HWND GetRenderTargetWindow() {
         if (!_graphicsRef.IsValid()) {
@@ -159,7 +160,7 @@ class Component {
         DiscardResources();
 
         source.AddRef(_graphicsRef);
-        CreateResources();
+        CreateResources(_graphicsRef);
 
         for (const auto& child : _children) {
             child->UpdateRenderTarget(source);
@@ -181,10 +182,10 @@ class Component {
         const ComponentRenderEvent* event
     ) {
         const auto rect = D2D1::RectF(0.f, 0.f, GetSize().width, GetSize().height);
+        //_graphicsRef.PushAxisAlignedClip(rect);
         _graphicsRef.SetTransform(D2D1::Matrix3x2F::Translation(GetSize()));
 
-        _graphicsRef.PushAxisAlignedClip(rect);
-        Render();
+        Render(_graphicsRef);
 
         if (_isDirty) {
             _isDirty      = false;
@@ -196,8 +197,8 @@ class Component {
             child->MessageProcedure(event);
         }
 
-        _graphicsRef.PopAxisAlignedClip();
         _graphicsRef.SetTransform(D2D1::Matrix3x2F::Identity());
+        //_graphicsRef.PopAxisAlignedClip();
     }
 
     void MessageProcedure(

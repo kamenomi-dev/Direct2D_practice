@@ -65,8 +65,12 @@ class Window final : public Component {
         _renderDpi = dpi;
     }
 
-    void CreateResources() { _graphicsRef.CreateSolidColorBrush(_nativeBrush); }
-    void DiscardResources() { _nativeBrush.Discard(); }
+    void CreateResources(
+        Direct2D::Graphics& graphics
+    ) override {
+        graphics.CreateSolidColorBrush(_nativeBrush);
+    }
+    void DiscardResources() override { _nativeBrush.Discard(); }
 
     inline void FillRectangleOnce(
         _In_ Direct2D::Graphics& graphics, _In_ const D2D1_RECT_F& rect, _In_ const D2D1::ColorF& color
@@ -75,19 +79,21 @@ class Window final : public Component {
         graphics.FillRectangle(rect, _nativeBrush);
     }
 
-    bool Render() {
+    bool Render(
+        Direct2D::Graphics& graphics
+    ) override {
         auto rect = D2D1::RectF(0, 0, (float)GetSize().width, (float)GetSize().height);
-        FillRectangleOnce(_graphicsRef, rect, GetBackgroundColor());
+        FillRectangleOnce(graphics, rect, GetBackgroundColor());
 
         // Caption
 
         rect.bottom = (float)(Direct2D_UI::Window::ConstScale::WINDOW_CAPTION_HEIGHT / 96.0 * _renderDpi);
-        FillRectangleOnce(_graphicsRef, rect, GetCaptionColor());
+        FillRectangleOnce(graphics, rect, GetCaptionColor());
 
         _nativeBrush.SetColor(GetTextColor());
         Direct2D::Resource::ResourceManager::GeneralFont_Normal.SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
         Direct2D::Resource::ResourceManager::GeneralFont_Normal.SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
-        _graphicsRef.GetPointer()->DrawTextW(
+        graphics.GetPointer()->DrawTextW(
             _windowProperties.Title.c_str(),
             (uint32_t)_windowProperties.Title.length(),
             Direct2D::Resource::ResourceManager::GeneralFont_Normal.GetPointer(),

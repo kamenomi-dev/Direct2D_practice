@@ -12,22 +12,40 @@ class TextFormat : public D2DInterface<IDWriteTextFormat> {
     TextFormat()          = default;
     virtual ~TextFormat() = default;
 
-    void SetTextAlignment(
+    _Success_(return == true)
+    bool SetTextAlignment(
         const DWRITE_TEXT_ALIGNMENT& textAlignment
     ) {
+        if (!IsValid()) {
+            return false;
+        }
+
         SetLastResult(GetPointer()->SetTextAlignment(textAlignment));
+        return true;
     }
 
-    void SetParagraphAlignment(
+    _Success_(return == true)
+    bool SetParagraphAlignment(
         const DWRITE_PARAGRAPH_ALIGNMENT& paragraphAlignment
     ) {
+        if (!IsValid()) {
+            return false;
+        }
+
         SetLastResult(GetPointer()->SetParagraphAlignment(paragraphAlignment));
+        return true;
     }
 
-    void SetWordWrapping(
+    _Success_(return == true)
+    bool SetWordWrapping(
         const DWRITE_WORD_WRAPPING& wordWrapping
     ) {
+        if (!IsValid()) {
+            return false;
+        }
+
         SetLastResult(GetPointer()->SetWordWrapping(wordWrapping));
+        return true;
     }
 
   private:
@@ -54,22 +72,40 @@ class TextLayout : public D2DInterface<IDWriteTextLayout> {
         return false;
     }
 
-    void SetTextAlignment(
+    _Success_(return == true)
+    bool SetTextAlignment(
         const DWRITE_TEXT_ALIGNMENT& textAlignment
     ) {
+        if (!IsValid()) {
+            return false;
+        }
+
         SetLastResult(GetPointer()->SetTextAlignment(textAlignment));
+        return true;
     }
 
-    void SetParagraphAlignment(
+    _Success_(return == true)
+    bool SetParagraphAlignment(
         const DWRITE_PARAGRAPH_ALIGNMENT& paragraphAlignment
     ) {
+        if (!IsValid()) {
+            return false;
+        }
+
         SetLastResult(GetPointer()->SetParagraphAlignment(paragraphAlignment));
+        return true;
     }
 
-    void SetWordWrapping(
+    _Success_(return == true)
+    bool SetWordWrapping(
         const DWRITE_WORD_WRAPPING& wordWrapping
     ) {
+        if (!IsValid()) {
+            return false;
+        }
+
         SetLastResult(GetPointer()->SetWordWrapping(wordWrapping));
+        return true;
     }
 
   private:
